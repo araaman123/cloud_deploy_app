@@ -1,0 +1,152 @@
+version: '3.8'
+
+services:
+  # FastAPI Control Plane
+  api:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: cloud-deploy-api
+    ports:
+      - "8000:8000"
+    environment:
+      DATABASE_URL: postgresql://postgres:postgres@postgres:5432/cloud_deploy
+      RELOAD: "False"
+    depends_on:
+      postgres:
+        condition: service_healthy
+    volumes:
+      - .env:/app/.env
+    networks:
+      - cloud-deploy-network
+
+  # PostgreSQL Database
+  postgres:
+    image: postgres:15-alpine
+    container_name: cloud-deploy-postgres
+    environment:
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: postgres
+      POSTGRES_DB: cloud_deploy
+    ports:
+      - "5432:5432"
+    networks:
+      - cloud-deploy-network
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  # Redis (for caching & sessions)
+  redis:
+    image: redis:7-alpine
+    container_name: cloud-deploy-redis
+    ports:
+      - "6379:6379"
+    networks:
+      - cloud-deploy-network
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  # Prometheus (Metrics)
+  prometheus:
+    image: prom/prometheus:latest
+    container_name: cloud-deploy-prometheus
+    ports:
+      - "9090:9090"
+    networks:
+      - cloud-deploy-network
+    volumes:
+      - ./monitoring/prometheus.yaml:/etc/prometheus/prometheus.yml
+      - prometheus_data:/prometheus
+    command:
+      - '--config.file=/etc/prometheus/prometheus.yml'
+      - '--storage.tsdb.path=/prometheus'
+    depends_on:
+      - postgres
+
+  # Grafana (Visualization)
+  grafana:
+    image: grafana/grafana:latest
+    container_name: cloud-deploy-grafana
+    ports:
+      - "3001:3000"
+    networks:
+      - cloud-deploy-network
+    environment:
+      GF_SECURITY_ADMIN_PASSWORD: admin
+    volumes:
+      - grafana_data:/var/lib/grafana
+    depends_on:
+      - prometheus
+
+  # Elasticsearch (Logs)
+  elasticsearch:
+    image: docker.elastic.co/elasticsearch/elasticsearch:8.5.0
+    container_name: cloud-deploy-elasticsearch
+    environment:
+      - discovery.type=single-node
+      - xpack.security.enabled=false
+    ports:
+      - "9200:9200"
+    networks:
+      - cloud-deploy-network
+    volumes:
+      - elasticsearch_data:/usr/share/elasticsearch/data
+    healthcheck:
+      test: ["CMD-SHELL", "curl -s http://localhost:9200 | grep -q cluster_name"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  # Kibana (Log Viewer)
+  kibana:
+    image: docker.elastic.co/kibana/kibana:8.5.0
+    container_name: cloud-deploy-kibana
+    ports:
+      - "5601:5601"
+    networks:
+      - cloud-deploy-network
+    environment:
+      ELASTICSEARCH_HOSTS: http://elasticsearch:9200
+    depends_on:
+      - elasticsearch
+
+  # MinIO (S3-compatible storage for local development)
+  minio:
+    image: minio/minio:latest
+    container_name: cloud-deploy-minio
+    ports:
+      - "9000:9000"
+      - "9001:9001"
+    networks:
+      - cloud-deploy-network
+    environment:
+      MINIO_ROOT_USER: minioadmin
+      MINIO_ROOT_PASSWORD: minioadmin
+    volumes:
+      - minio_data:/data
+    command: server /data --console-address ":9001"
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:9000/minio/health/live"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+volumes:
+  postgres_data:
+  redis_data:
+  prometheus_data:
+  grafana_data:
+  elasticsearch_data:
+  minio_data:
+
+networks:
+  cloud-deploy-network:
+    driver: bridge

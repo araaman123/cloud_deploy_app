@@ -1,0 +1,509 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>DevOps SaaS Control Plane</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Roboto', 'Oxygen', 'Ubuntu', sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            padding: 20px;
+        }
+
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+        }
+
+        header {
+            background: white;
+            border-radius: 12px;
+            padding: 30px;
+            margin-bottom: 30px;
+            box-shadow: 0 10px 40px rgba(0,0,0,0.1);
+        }
+
+        header h1 {
+            color: #333;
+            margin-bottom: 10px;
+        }
+
+        header p {
+            color: #666;
+            font-size: 16px;
+        }
+
+        .grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+            gap: 20px;
+            margin-bottom: 30px;
+        }
+
+        .card {
+            background: white;
+            border-radius: 12px;
+            padding: 25px;
+            box-shadow: 0 10px 40px rgba(0,0,0,0.1);
+            transition: transform 0.2s, box-shadow 0.2s;
+        }
+
+        .card:hover {
+            transform: translateY(-5px);
+            box-shadow: 0 15px 50px rgba(0,0,0,0.15);
+        }
+
+        .card h2 {
+            color: #333;
+            margin-bottom: 15px;
+            font-size: 20px;
+        }
+
+        .form-group {
+            margin-bottom: 15px;
+        }
+
+        label {
+            display: block;
+            color: #555;
+            font-weight: 500;
+            margin-bottom: 8px;
+            font-size: 14px;
+        }
+
+        input, textarea, select {
+            width: 100%;
+            padding: 10px 12px;
+            border: 2px solid #e0e0e0;
+            border-radius: 6px;
+            font-size: 14px;
+            font-family: inherit;
+            transition: border-color 0.2s;
+        }
+
+        input:focus, textarea:focus, select:focus {
+            outline: none;
+            border-color: #667eea;
+            box-shadow: 0 0 0 3px rgba(102, 126, 234, 0.1);
+        }
+
+        textarea {
+            resize: vertical;
+            min-height: 80px;
+            font-family: 'Monaco', 'Menlo', monospace;
+            font-size: 12px;
+        }
+
+        .button-group {
+            display: flex;
+            gap: 10px;
+            margin-top: 20px;
+        }
+
+        button {
+            flex: 1;
+            padding: 12px 20px;
+            border: none;
+            border-radius: 6px;
+            font-size: 14px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.2s;
+        }
+
+        .btn-primary {
+            background: #667eea;
+            color: white;
+        }
+
+        .btn-primary:hover {
+            background: #5568d3;
+            transform: scale(1.02);
+        }
+
+        .btn-secondary {
+            background: #f0f0f0;
+            color: #333;
+        }
+
+        .btn-secondary:hover {
+            background: #e0e0e0;
+        }
+
+        .response {
+            background: #f5f5f5;
+            border-left: 4px solid #667eea;
+            padding: 15px;
+            border-radius: 6px;
+            margin-top: 15px;
+            max-height: 200px;
+            overflow-y: auto;
+            font-family: 'Monaco', 'Menlo', monospace;
+            font-size: 12px;
+            color: #333;
+        }
+
+        .response.success {
+            border-left-color: #10b981;
+            background: #f0fdf4;
+        }
+
+        .response.error {
+            border-left-color: #ef4444;
+            background: #fef2f2;
+            color: #dc2626;
+        }
+
+        .status {
+            display: inline-block;
+            padding: 6px 12px;
+            border-radius: 20px;
+            font-size: 12px;
+            font-weight: 600;
+            margin-top: 10px;
+        }
+
+        .status.healthy {
+            background: #d1fae5;
+            color: #065f46;
+        }
+
+        .status.error {
+            background: #fee2e2;
+            color: #7f1d1d;
+        }
+
+        .endpoints {
+            background: white;
+            border-radius: 12px;
+            padding: 25px;
+            box-shadow: 0 10px 40px rgba(0,0,0,0.1);
+        }
+
+        .endpoints h2 {
+            color: #333;
+            margin-bottom: 20px;
+        }
+
+        .endpoint-item {
+            padding: 12px;
+            margin-bottom: 8px;
+            background: #f9f9f9;
+            border-left: 4px solid #667eea;
+            border-radius: 4px;
+            font-family: 'Monaco', 'Menlo', monospace;
+            font-size: 13px;
+        }
+
+        .method {
+            display: inline-block;
+            padding: 4px 8px;
+            border-radius: 4px;
+            font-weight: 600;
+            margin-right: 10px;
+            font-size: 11px;
+        }
+
+        .method.get { background: #dbeafe; color: #1e40af; }
+        .method.post { background: #dcfce7; color: #166534; }
+        .method.put { background: #fef08a; color: #713f12; }
+        .method.delete { background: #fee2e2; color: #991b1b; }
+
+        .links {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 15px;
+            margin-top: 20px;
+        }
+
+        .link-card {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            padding: 20px;
+            border-radius: 8px;
+            text-align: center;
+            text-decoration: none;
+            transition: transform 0.2s;
+        }
+
+        .link-card:hover {
+            transform: scale(1.05);
+        }
+
+        .link-card h3 {
+            margin-bottom: 8px;
+        }
+
+        .link-card p {
+            font-size: 12px;
+            opacity: 0.9;
+        }
+
+        .loading {
+            display: inline-block;
+            width: 16px;
+            height: 16px;
+            border: 2px solid #f3f3f3;
+            border-top: 2px solid #667eea;
+            border-radius: 50%;
+            animation: spin 1s linear infinite;
+            margin-right: 8px;
+        }
+
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <header>
+            <h1>🚀 DevOps Automation SaaS</h1>
+            <p>Control Plane API Testing Interface</p>
+        </header>
+
+        <div class="grid">
+            <!-- Health Check -->
+            <div class="card">
+                <h2>🏥 Health Check</h2>
+                <button class="btn-primary" onclick="checkHealth()" style="width: 100%;">Check API Status</button>
+                <div id="healthResponse" class="response" style="display: none;"></div>
+            </div>
+
+            <!-- List Apps -->
+            <div class="card">
+                <h2>📋 List Apps</h2>
+                <button class="btn-primary" onclick="listApps()" style="width: 100%;">Fetch Applications</button>
+                <div id="listResponse" class="response" style="display: none;"></div>
+            </div>
+
+            <!-- Create App -->
+            <div class="card">
+                <h2>➕ Create App</h2>
+                <div class="form-group">
+                    <label>App Name</label>
+                    <input type="text" id="appName" placeholder="my-awesome-app">
+                </div>
+                <div class="form-group">
+                    <label>Repository URL</label>
+                    <input type="text" id="repoUrl" placeholder="https://github.com/user/repo">
+                </div>
+                <div class="form-group">
+                    <label>Runtime</label>
+                    <select id="runtime">
+                        <option value="python">Python (FastAPI/Flask/Django)</option>
+                        <option value="nodejs">Node.js (Express/Next.js)</option>
+                        <option value="static">Static (HTML/CSS/JS)</option>
+                    </select>
+                </div>
+                <button class="btn-primary" onclick="createApp()" style="width: 100%;">Create Application</button>
+                <div id="createResponse" class="response" style="display: none;"></div>
+            </div>
+
+            <!-- Trigger Deployment -->
+            <div class="card">
+                <h2>🚀 Trigger Deployment</h2>
+                <div class="form-group">
+                    <label>App ID</label>
+                    <input type="text" id="deployAppId" placeholder="e.g., app-123">
+                </div>
+                <button class="btn-primary" onclick="triggerDeployment()" style="width: 100%;">Deploy Now</button>
+                <div id="deployResponse" class="response" style="display: none;"></div>
+            </div>
+
+            <!-- Get Deployment Status -->
+            <div class="card">
+                <h2>📊 Deployment Status</h2>
+                <div class="form-group">
+                    <label>App ID</label>
+                    <input type="text" id="statusAppId" placeholder="e.g., app-123">
+                </div>
+                <button class="btn-primary" onclick="getDeploymentStatus()" style="width: 100%;">Check Status</button>
+                <div id="statusResponse" class="response" style="display: none;"></div>
+            </div>
+
+            <!-- Get Logs -->
+            <div class="card">
+                <h2>📝 Application Logs</h2>
+                <div class="form-group">
+                    <label>App ID</label>
+                    <input type="text" id="logsAppId" placeholder="e.g., app-123">
+                </div>
+                <button class="btn-primary" onclick="getLogs()" style="width: 100%;">Fetch Logs</button>
+                <div id="logsResponse" class="response" style="display: none;"></div>
+            </div>
+        </div>
+
+        <!-- Endpoints Reference -->
+        <div class="endpoints">
+            <h2>📚 Available Endpoints</h2>
+            <div class="endpoint-item">
+                <span class="method get">GET</span> /health
+                <br><small>Check API health status</small>
+            </div>
+            <div class="endpoint-item">
+                <span class="method post">POST</span> /api/v1/apps
+                <br><small>Create new application</small>
+            </div>
+            <div class="endpoint-item">
+                <span class="method get">GET</span> /api/v1/apps
+                <br><small>List all applications</small>
+            </div>
+            <div class="endpoint-item">
+                <span class="method get">GET</span> /api/v1/apps/{app_id}
+                <br><small>Get application details</small>
+            </div>
+            <div class="endpoint-item">
+                <span class="method post">POST</span> /api/v1/deployments/{app_id}/trigger
+                <br><small>Trigger deployment</small>
+            </div>
+            <div class="endpoint-item">
+                <span class="method get">GET</span> /api/v1/deployments/{app_id}
+                <br><small>Get deployment status</small>
+            </div>
+            <div class="endpoint-item">
+                <span class="method get">GET</span> /api/v1/logs/{app_id}
+                <br><small>Get application logs</small>
+            </div>
+
+            <h2 style="margin-top: 30px; margin-bottom: 20px;">🔗 Dashboard Links</h2>
+            <div class="links">
+                <a href="http://localhost:8000/docs" class="link-card" target="_blank">
+                    <h3>📖 Swagger UI</h3>
+                    <p>Interactive API documentation</p>
+                </a>
+                <a href="http://localhost:3001" class="link-card" target="_blank">
+                    <h3>📊 Grafana</h3>
+                    <p>Metrics & monitoring dashboards</p>
+                </a>
+                <a href="http://localhost:5601" class="link-card" target="_blank">
+                    <h3>📝 Kibana</h3>
+                    <p>Logs & analytics viewer</p>
+                </a>
+                <a href="http://localhost:9001" class="link-card" target="_blank">
+                    <h3>💾 MinIO</h3>
+                    <p>Object storage console</p>
+                </a>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        const API_BASE = 'http://localhost:8000';
+
+        function showResponse(elementId, data, isError = false) {
+            const element = document.getElementById(elementId);
+            element.textContent = JSON.stringify(data, null, 2);
+            element.style.display = 'block';
+            element.className = 'response ' + (isError ? 'error' : 'success');
+        }
+
+        async function checkHealth() {
+            try {
+                const response = await fetch(`${API_BASE}/health`);
+                const data = await response.json();
+                showResponse('healthResponse', data, !response.ok);
+            } catch (error) {
+                showResponse('healthResponse', { error: error.message }, true);
+            }
+        }
+
+        async function listApps() {
+            try {
+                const response = await fetch(`${API_BASE}/api/v1/apps`);
+                const data = await response.json();
+                showResponse('listResponse', data, !response.ok);
+            } catch (error) {
+                showResponse('listResponse', { error: error.message }, true);
+            }
+        }
+
+        async function createApp() {
+            const name = document.getElementById('appName').value;
+            const repo_url = document.getElementById('repoUrl').value;
+            const runtime = document.getElementById('runtime').value;
+
+            if (!name || !repo_url) {
+                showResponse('createResponse', { error: 'Please fill in all fields' }, true);
+                return;
+            }
+
+            try {
+                const response = await fetch(`${API_BASE}/api/v1/apps`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ name, repo_url, runtime })
+                });
+                const data = await response.json();
+                showResponse('createResponse', data, !response.ok);
+            } catch (error) {
+                showResponse('createResponse', { error: error.message }, true);
+            }
+        }
+
+        async function triggerDeployment() {
+            const appId = document.getElementById('deployAppId').value;
+
+            if (!appId) {
+                showResponse('deployResponse', { error: 'Please provide an App ID' }, true);
+                return;
+            }
+
+            try {
+                const response = await fetch(`${API_BASE}/api/v1/deployments/${appId}/trigger`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({})
+                });
+                const data = await response.json();
+                showResponse('deployResponse', data, !response.ok);
+            } catch (error) {
+                showResponse('deployResponse', { error: error.message }, true);
+            }
+        }
+
+        async function getDeploymentStatus() {
+            const appId = document.getElementById('statusAppId').value;
+
+            if (!appId) {
+                showResponse('statusResponse', { error: 'Please provide an App ID' }, true);
+                return;
+            }
+
+            try {
+                const response = await fetch(`${API_BASE}/api/v1/deployments/${appId}`);
+                const data = await response.json();
+                showResponse('statusResponse', data, !response.ok);
+            } catch (error) {
+                showResponse('statusResponse', { error: error.message }, true);
+            }
+        }
+
+        async function getLogs() {
+            const appId = document.getElementById('logsAppId').value;
+
+            if (!appId) {
+                showResponse('logsResponse', { error: 'Please provide an App ID' }, true);
+                return;
+            }
+
+            try {
+                const response = await fetch(`${API_BASE}/api/v1/logs/${appId}`);
+                const data = await response.json();
+                showResponse('logsResponse', data, !response.ok);
+            } catch (error) {
+                showResponse('logsResponse', { error: error.message }, true);
+            }
+        }
+    </script>
+</body>
+</html>
