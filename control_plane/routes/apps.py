@@ -1,6 +1,7 @@
 """Application management routes."""
 
 from fastapi import APIRouter, HTTPException, status, Query
+from pydantic import BaseModel
 from typing import List, Optional
 import uuid
 from datetime import datetime
@@ -10,36 +11,38 @@ router = APIRouter()
 apps_db = {}
 
 
+class CreateAppRequest(BaseModel):
+    app_name: str
+    repo_url: str
+    runtime: str = "python"
+    branch: str = "main"
+
+
 @router.post("")
-async def create_app(
-    name: str,
-    github_repo_url: str,
-    github_branch: str = "main",
-    app_type: str = "python"
-):
+async def create_app(request: CreateAppRequest):
     """Create a new deployment."""
-    if not name or not github_repo_url:
+    if not request.app_name or not request.repo_url:
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
-            detail="Name and GitHub URL are required"
+            detail="App name and repo URL are required"
         )
     
-    if app_type not in ["python", "node", "static"]:
+    if request.runtime not in ["python", "node", "static"]:
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
-            detail="Invalid app_type. Must be: python, node, or static"
+            detail="Invalid runtime. Must be: python, node, or static"
         )
     
     app_id = str(uuid.uuid4())
     namespace = f"app-{app_id[:8]}"
-    domain = f"{name.lower()}.apps.local"
+    domain = f"{request.app_name.lower()}.apps.local"
     
     app = {
         "id": app_id,
-        "name": name,
-        "github_repo_url": github_repo_url,
-        "github_branch": github_branch,
-        "app_type": app_type,
+        "name": request.app_name,
+        "github_repo_url": request.repo_url,
+        "github_branch": request.branch,
+        "app_type": request.runtime,
         "status": "pending",
         "namespace": namespace,
         "domain": domain,
