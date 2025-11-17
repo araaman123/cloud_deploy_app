@@ -1,92 +1,145 @@
 """Deployment management routes."""
 
-from fastapi import APIRouter, HTTPException, status, Query
+from fastapi import APIRouter, HTTPException, status, Query, Depends
+from sqlalchemy.orm import Session
 import uuid
 from datetime import datetime
+import sys
+from pathlib import Path
+
+# Add parent dir to path
+sys.path.insert(0, str(Path(__file__).parent.parent))
+
+from models.database import Deployment, Application
+from database.init import SessionLocal
 
 router = APIRouter()
 
-deployments_db = {}
+
+def get_db():
+    db = SessionLocal()
+    try:
+        yield db
+    finally:
+        db.close()
 
 
 @router.post("/{app_id}/trigger")
-async def trigger_deployment(app_id: str, commit_hash: str = Query("latest")):
+async def trigger_deployment(app_id: str, commit_hash: str = Query("latest"), db: Session = Depends(get_db)):
     """Trigger a new deployment."""
+    # Check if app exists
+    app = db.query(Application).filter(Application.id == app_id).first()
+    if not app:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail=f"Application {app_id} not found"
+        )
+    
     deployment_id = str(uuid.uuid4())
     
-    deployment = {
-        "id": deployment_id,
-        "app_id": app_id,
-        "status": "pending",
-        "commit_hash": commit_hash,
-        "started_at": datetime.utcnow().isoformat(),
-        "steps": [
-            {"name": "Cloning repository", "status": "pending"},
-            {"name": "Detecting app type", "status": "pending"},
-            {"name": "Building Docker image", "status": "pending"},
-            {"name": "Pushing to registry", "status": "pending"},
-            {"name": "Creating Kubernetes namespace", "status": "pending"},
-            {"name": "Deploying application", "status": "pending"},
-            {"name": "Configuring TLS", "status": "pending"},
-        ]
-    }
+    deployment = Deployment(
+        id=deployment_id,
+        app_id=app_id,
+        status="pending",
+        commit_hash=commit_hash
+    )
     
-    deployments_db[deployment_id] = deployment
+    db.add(deployment)
+    db.commit()
+    db.refresh(deployment)
     
     return {
         "message": "Deployment triggered successfully",
-        "deployment": deployment
+        "deployment": {
+            "id": deployment.id,
+            "app_id": deployment.app_id,
+            "status": deployment.status,
+            "commit_hash": deployment.commit_hash,
+            "started_at": deployment.started_at.isoformat() if deployment.started_at else None,
+            "steps": [
+                {"name": "Cloning repository", "status": "pending"},
+                {"name": "Detecting app type", "status": "pending"},
+                {"name": "Building Docker image", "status": "pending"},
+                {"name": "Pushing to registry", "status": "pending"},
+                {"name": "Creating Kubernetes namespace", "status": "pending"},
+                {"name": "Deploying application", "status": "pending"},
+                {"name": "Configuring TLS", "status": "pending"},
+            ]
+        }
     }
 
 
 @router.get("/{deployment_id}")
-async def get_deployment(deployment_id: str):
+async def get_deployment(deployment_id: str, db: Session = Depends(get_db)):
     """Get deployment status."""
-    if deployment_id not in deployments_db:
+    deployment = db.query(Deployment).filter(Deployment.id == deployment_id).first()
+    
+    if not deployment:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
             detail=f"Deployment {deployment_id} not found"
         )
     
-    return deployments_db[deployment_id]
+    return {
+        "id": deployment.id,
+        "app_id": deployment.app_id,
+        "status": deployment.status,
+        "commit_hash": deployment.commit_hash,
+        "started_at": deployment.started_at.isoformat() if deployment.started_at else None,
+        "completed_at": deployment.completed_at.isoformat() if deployment.completed_at else None,
+        "error_message": deployment.error_message
+    }
 
 
 @router.post("/{deployment_id}/retry")
-async def retry_deployment(deployment_id: str):
+async def retry_deployment(deployment_id: str, db: Session = Depends(get_db)):
     """Retry a failed deployment."""
-    if deployment_id not in deployments_db:
+    deployment = db.query(Deployment).filter(Deployment.id == deployment_id).first()
+    
+    if not deployment:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
             detail=f"Deployment {deployment_id} not found"
         )
     
-    deployment = deployments_db[deployment_id]
+    deployment.status = "pending"
+    deployment.started_at = datetime.utcnow()
     
-    for step in deployment["steps"]:
-        step["status"] = "pending"
-    
-    deployment["status"] = "pending"
-    deployment["started_at"] = datetime.utcnow().isoformat()
+    db.commit()
+    db.refresh(deployment)
     
     return {
         "message": "Deployment retry initiated",
-        "deployment": deployment
+        "deployment": {
+            "id": deployment.id,
+            "app_id": deployment.app_id,
+            "status": deployment.status,
+            "started_at": deployment.started_at.isoformat()
+        }
     }
 
 
 @router.post("/{deployment_id}/cancel")
-async def cancel_deployment(deployment_id: str):
+async def cancel_deployment(deployment_id: str, db: Session = Depends(get_db)):
     """Cancel a running deployment."""
-    if deployment_id not in deployments_db:
+    deployment = db.query(Deployment).filter(Deployment.id == deployment_id).first()
+    
+    if not deployment:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
             detail=f"Deployment {deployment_id} not found"
         )
     
-    deployment = deployments_db[deployment_id]
-    deployment["status"] = "cancelled"
+    deployment.status = "cancelled"
+    
+    db.commit()
+    db.refresh(deployment)
     
     return {
         "message": "Deployment cancelled",
-        "deployment": deployment
+        "deployment": {
+            "id": deployment.id,
+            "app_id": deployment.app_id,
+            "status": deployment.status
+        }
     }

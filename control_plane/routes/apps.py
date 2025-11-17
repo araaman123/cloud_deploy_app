@@ -1,14 +1,29 @@
 """Application management routes."""
 
-from fastapi import APIRouter, HTTPException, status, Query
+from fastapi import APIRouter, HTTPException, status, Query, Depends
+from sqlalchemy.orm import Session
 from pydantic import BaseModel
 from typing import List, Optional
 import uuid
 from datetime import datetime
+import sys
+from pathlib import Path
+
+# Add parent dir to path
+sys.path.insert(0, str(Path(__file__).parent.parent))
+
+from models.database import Application, AppType as AppTypeEnum
+from database.init import SessionLocal
 
 router = APIRouter()
 
-apps_db = {}
+
+def get_db():
+    db = SessionLocal()
+    try:
+        yield db
+    finally:
+        db.close()
 
 
 class CreateAppRequest(BaseModel):
@@ -19,7 +34,7 @@ class CreateAppRequest(BaseModel):
 
 
 @router.post("")
-async def create_app(request: CreateAppRequest):
+async def create_app(request: CreateAppRequest, db: Session = Depends(get_db)):
     """Create a new deployment."""
     if not request.app_name or not request.repo_url:
         raise HTTPException(
@@ -37,61 +52,110 @@ async def create_app(request: CreateAppRequest):
     namespace = f"app-{app_id[:8]}"
     domain = f"{request.app_name.lower()}.apps.local"
     
-    app = {
-        "id": app_id,
-        "name": request.app_name,
-        "github_repo_url": request.repo_url,
-        "github_branch": request.branch,
-        "app_type": request.runtime,
-        "status": "pending",
-        "namespace": namespace,
-        "domain": domain,
-        "tls_enabled": True,
-        "created_at": datetime.utcnow().isoformat()
+    app_type_map = {
+        "python": AppTypeEnum.PYTHON,
+        "node": AppTypeEnum.NODE,
+        "static": AppTypeEnum.STATIC
     }
     
-    apps_db[app_id] = app
+    app = Application(
+        id=app_id,
+        name=request.app_name,
+        github_repo_url=request.repo_url,
+        github_branch=request.branch,
+        app_type=app_type_map[request.runtime],
+        status="pending",
+        namespace=namespace,
+        domain=domain,
+        tls_enabled=True
+    )
+    
+    db.add(app)
+    db.commit()
+    db.refresh(app)
     
     return {
         "message": "Application created successfully",
-        "app": app
+        "app": {
+            "id": app.id,
+            "name": app.name,
+            "github_repo_url": app.github_repo_url,
+            "github_branch": app.github_branch,
+            "app_type": app.app_type.value if app.app_type else None,
+            "status": app.status,
+            "namespace": app.namespace,
+            "domain": app.domain,
+            "tls_enabled": app.tls_enabled,
+            "created_at": app.created_at.isoformat()
+        }
     }
 
 
 @router.get("")
-async def list_apps(skip: int = Query(0, ge=0), limit: int = Query(10, ge=1, le=100)):
+async def list_apps(skip: int = Query(0, ge=0), limit: int = Query(10, ge=1, le=100), db: Session = Depends(get_db)):
     """List all deployments."""
-    apps_list = list(apps_db.values())
+    apps = db.query(Application).offset(skip).limit(limit).all()
+    total = db.query(Application).count()
+    
     return {
-        "total": len(apps_list),
+        "total": total,
         "skip": skip,
         "limit": limit,
-        "apps": apps_list[skip:skip+limit]
+        "apps": [
+            {
+                "id": app.id,
+                "name": app.name,
+                "github_repo_url": app.github_repo_url,
+                "github_branch": app.github_branch,
+                "app_type": app.app_type.value if app.app_type else None,
+                "status": app.status,
+                "namespace": app.namespace,
+                "domain": app.domain,
+                "created_at": app.created_at.isoformat()
+            }
+            for app in apps
+        ]
     }
 
 
 @router.get("/{app_id}")
-async def get_app(app_id: str):
+async def get_app(app_id: str, db: Session = Depends(get_db)):
     """Get deployment details."""
-    if app_id not in apps_db:
+    app = db.query(Application).filter(Application.id == app_id).first()
+    
+    if not app:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
             detail=f"Application {app_id} not found"
         )
     
-    return apps_db[app_id]
+    return {
+        "id": app.id,
+        "name": app.name,
+        "github_repo_url": app.github_repo_url,
+        "github_branch": app.github_branch,
+        "app_type": app.app_type.value if app.app_type else None,
+        "status": app.status,
+        "namespace": app.namespace,
+        "domain": app.domain,
+        "created_at": app.created_at.isoformat()
+    }
 
 
 @router.delete("/{app_id}")
-async def delete_app(app_id: str):
+async def delete_app(app_id: str, db: Session = Depends(get_db)):
     """Delete a deployment."""
-    if app_id not in apps_db:
+    app = db.query(Application).filter(Application.id == app_id).first()
+    
+    if not app:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
             detail=f"Application {app_id} not found"
         )
     
-    deleted_app = apps_db.pop(app_id)
+    db.delete(app)
+    db.commit()
+    
     return {
         "message": "Application deleted successfully",
         "app_id": app_id
@@ -105,31 +169,43 @@ async def update_app(
     github_branch: Optional[str] = None,
     cpu_limit: Optional[str] = None,
     memory_limit: Optional[str] = None,
-    replicas: Optional[int] = None
+    replicas: Optional[int] = None,
+    db: Session = Depends(get_db)
 ):
     """Update application configuration."""
-    if app_id not in apps_db:
+    app = db.query(Application).filter(Application.id == app_id).first()
+    
+    if not app:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
             detail=f"Application {app_id} not found"
         )
     
-    app = apps_db[app_id]
-    
     if name:
-        app["name"] = name
+        app.name = name
     if github_branch:
-        app["github_branch"] = github_branch
+        app.github_branch = github_branch
     if cpu_limit:
-        app["cpu_limit"] = cpu_limit
+        app.cpu_limit = cpu_limit
     if memory_limit:
-        app["memory_limit"] = memory_limit
+        app.memory_limit = memory_limit
     if replicas:
-        app["replicas"] = replicas
+        app.replicas = replicas
     
-    app["updated_at"] = datetime.utcnow().isoformat()
+    app.updated_at = datetime.utcnow()
+    
+    db.commit()
+    db.refresh(app)
     
     return {
         "message": "Application updated successfully",
-        "app": app
+        "app": {
+            "id": app.id,
+            "name": app.name,
+            "github_repo_url": app.github_repo_url,
+            "github_branch": app.github_branch,
+            "app_type": app.app_type.value if app.app_type else None,
+            "status": app.status,
+            "updated_at": app.updated_at.isoformat()
+        }
     }

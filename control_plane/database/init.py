@@ -1,7 +1,6 @@
 """Database connection and session management."""
 
 from sqlalchemy import create_engine
-from sqlalchemy.ext.asyncio import AsyncSession, create_async_engine
 from sqlalchemy.orm import sessionmaker, declarative_base
 from config import settings
 import logging
@@ -11,34 +10,35 @@ logger = logging.getLogger(__name__)
 # Create Base for ORM models
 Base = declarative_base()
 
-# Create async engine
-engine = create_async_engine(
-    settings.DATABASE_URL.replace("postgresql://", "postgresql+asyncpg://"),
+# Create sync engine
+engine = create_engine(
+    settings.DATABASE_URL,
     echo=settings.SQLALCHEMY_ECHO,
-    future=True
+    pool_pre_ping=True
 )
 
-# Create async session factory
-AsyncSessionLocal = sessionmaker(
-    engine, class_=AsyncSession, expire_on_commit=False
+# Create sync session factory
+SessionLocal = sessionmaker(
+    autocommit=False,
+    autoflush=False,
+    bind=engine
 )
 
 
-async def get_db():
+def get_db():
     """Dependency to get database session."""
-    async with AsyncSessionLocal() as session:
-        try:
-            yield session
-        except Exception as e:
-            await session.rollback()
-            logger.error(f"Database error: {e}")
-            raise
-        finally:
-            await session.close()
+    db = SessionLocal()
+    try:
+        yield db
+    except Exception as e:
+        db.rollback()
+        logger.error(f"Database error: {e}")
+        raise
+    finally:
+        db.close()
 
 
-async def init_db():
+def init_db():
     """Initialize database tables."""
-    async with engine.begin() as conn:
-        await conn.run_sync(Base.metadata.create_all)
+    Base.metadata.create_all(bind=engine)
     logger.info("Database tables created successfully")
