@@ -7,6 +7,8 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
     build-essential \
     postgresql-client \
     libpq-dev \
+    git \
+    curl \
     && rm -rf /var/lib/apt/lists/*
 
 # Copy requirements

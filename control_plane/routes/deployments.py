@@ -26,6 +26,42 @@ def get_db():
         db.close()
 
 
+@router.post("/trigger")
+async def trigger_deployment_generic(app_id: str = Query(...), commit_hash: str = Query("main"), db: Session = Depends(get_db)):
+    """Trigger a new deployment (generic endpoint)."""
+    # Check if app exists
+    app = db.query(Application).filter(Application.id == app_id).first()
+    if not app:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail=f"Application {app_id} not found"
+        )
+    
+    deployment_id = str(uuid.uuid4())
+    
+    deployment = Deployment(
+        id=deployment_id,
+        app_id=app_id,
+        status="pending",
+        commit_hash=commit_hash
+    )
+    
+    db.add(deployment)
+    db.commit()
+    db.refresh(deployment)
+    
+    # Start deployment in background
+    asyncio.create_task(start_deployment(deployment_id, app_id))
+    
+    return {
+        "message": "Deployment triggered successfully",
+        "deployment_id": deployment.id,
+        "app_id": deployment.app_id,
+        "status": deployment.status,
+        "commit_hash": deployment.commit_hash
+    }
+
+
 @router.post("/{app_id}/trigger")
 async def trigger_deployment(app_id: str, commit_hash: str = Query("latest"), db: Session = Depends(get_db)):
     """Trigger a new deployment."""

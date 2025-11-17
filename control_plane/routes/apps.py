@@ -50,7 +50,7 @@ async def create_app(request: CreateAppRequest, db: Session = Depends(get_db)):
     
     app_id = str(uuid.uuid4())
     namespace = f"app-{app_id[:8]}"
-    domain = f"{request.app_name.lower()}.apps.local"
+    domain = f"{request.app_name.lower()}-{app_id[:8]}.apps.local"
     
     app_type_map = {
         "python": AppTypeEnum.PYTHON,
