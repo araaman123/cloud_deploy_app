@@ -1,6 +1,6 @@
 """Deployment management routes."""
 
-from fastapi import APIRouter, HTTPException, status
+from fastapi import APIRouter, HTTPException, status, Query
 import uuid
 from datetime import datetime
 
@@ -10,7 +10,7 @@ deployments_db = {}
 
 
 @router.post("/{app_id}/trigger")
-async def trigger_deployment(app_id: str, commit_hash: str):
+async def trigger_deployment(app_id: str, commit_hash: str = Query("latest")):
     """Trigger a new deployment."""
     deployment_id = str(uuid.uuid4())
     
