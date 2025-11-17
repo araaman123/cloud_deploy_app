@@ -1,10 +1,12 @@
-# DevOps Automation SaaS - Project Summary
+# Cloud Deploy - Auto-Deployment Platform
 
-## Overview
+## What is This?
 
-A mini-Vercel platform that automatically deploys backend applications to cloud infrastructure with one GitHub push. The platform handles all infrastructure provisioning, CI/CD, containerization, orchestration, and monitoring.
+A one-command deployment system that takes your GitHub repo and automatically deploys it to the cloud. Just push your code, and it handles Docker, Kubernetes, databases, monitoring—everything.
 
-## What's Been Built ✅
+Think of it as your personal DevOps team in a box.
+
+## What's Included ✅
 
 ### 1. Core FastAPI Control Plane
 - ✅ Main application with lifespan management
@@ -256,69 +258,36 @@ A mini-Vercel platform that automatically deploys backend applications to cloud 
 - **100+** lines of GitHub Actions workflows
 - **Comprehensive** README and getting started guides
 
-## Next Steps for Production
+## Next Steps
 
-### Phase 1: Completion
-- [ ] Add comprehensive test suite
-- [ ] Implement payment processing (Stripe)
-- [ ] Add custom domain management
-- [ ] Implement backup and disaster recovery
-
-### Phase 2: Scaling
-- [ ] Multi-region deployment support
-- [ ] Database read replicas
-- [ ] CDN integration for static assets
-- [ ] Advanced autoscaling policies
-
-### Phase 3: Enterprise
+Want to extend this? Here are some ideas:
+- [ ] Add multiple cloud provider support (GCP, Azure)
+- [ ] Custom domain and SSL management
+- [ ] Advanced environment variable management
+- [ ] Scheduled backups and disaster recovery
 - [ ] Team collaboration features
-- [ ] Advanced RBAC
-- [ ] Audit logging
-- [ ] Custom resource quotas
-- [ ] SLA guarantees
-
-## Monetization Strategy
-
-**Pricing Tiers:**
-- **Starter**: $15/mo - 1 app, 1 GB RAM, 1 CPU
-- **Pro**: $49/mo - 5 apps, 4 GB RAM, 2 CPUs  
-- **Business**: $99/mo - 10 apps, 8 GB RAM, 4 CPUs
-- **Enterprise**: Custom pricing
-
-**Revenue Streams:**
-- Monthly subscriptions
-- Pay-per-use overages
-- Premium support packages
-- Custom integrations
+- [ ] Better deployment rollback UI
 
 ## Local Development
 
-Start here: [GETTING_STARTED.md](./GETTING_STARTED.md)
-
-Quick start:
+Get started quickly:
 ```bash
-./setup.sh  # macOS/Linux
-# or
-setup.bat   # Windows
+# macOS/Linux
+./setup.sh
 
+# Windows
+setup.bat
+
+# Start everything
 docker-compose up -d
-uvicorn control_plane.main:app --reload
 ```
 
-Access:
-- **API**: http://localhost:8000
-- **Docs**: http://localhost:8000/docs
-- **Grafana**: http://localhost:3001
+Then open:
+- **Testing UI**: http://localhost:8000/ui (easiest way to deploy)
+- **API Docs**: http://localhost:8000/docs
+- **Grafana Dashboards**: http://localhost:3001 (admin/admin)
 - **Prometheus**: http://localhost:9090
-- **Kibana**: http://localhost:5601
+- **Kibana Logs**: http://localhost:5601
+- **MinIO Storage**: http://localhost:9001
 
-## Support
-
-- 📖 Full documentation in `GETTING_STARTED.md`
-- 🏗️ Architecture details in `README.md`
-- 🚀 Deployment guide in `terraform/README.md`
-- ☸️ Kubernetes guide in `kubernetes/README.md`
-
-## License
-
-MIT License - See LICENSE file for details
+Full setup guide: [GETTING_STARTED.md](./GETTING_STARTED.md)
