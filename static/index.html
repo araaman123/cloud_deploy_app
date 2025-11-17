@@ -428,11 +428,11 @@
         }
 
         async function createApp() {
-            const name = document.getElementById('appName').value;
+            const app_name = document.getElementById('appName').value;
             const repo_url = document.getElementById('repoUrl').value;
             const runtime = document.getElementById('runtime').value;
 
-            if (!name || !repo_url) {
+            if (!app_name || !repo_url) {
                 showResponse('createResponse', { error: 'Please fill in all fields' }, true);
                 return;
             }
@@ -441,7 +441,7 @@
                 const response = await fetch(`${API_BASE}/api/v1/apps`, {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ name, repo_url, runtime })
+                    body: JSON.stringify({ app_name, repo_url, runtime })
                 });
                 const data = await response.json();
                 showResponse('createResponse', data, !response.ok);
