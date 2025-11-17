@@ -6,12 +6,14 @@ import uuid
 from datetime import datetime
 import sys
 from pathlib import Path
+import asyncio
 
 # Add parent dir to path
 sys.path.insert(0, str(Path(__file__).parent.parent))
 
 from models.database import Deployment, Application
 from database.init import SessionLocal
+from services.deployment_orchestrator import start_deployment
 
 router = APIRouter()
 
@@ -47,6 +49,9 @@ async def trigger_deployment(app_id: str, commit_hash: str = Query("latest"), db
     db.add(deployment)
     db.commit()
     db.refresh(deployment)
+    
+    # Start deployment in background
+    asyncio.create_task(start_deployment(deployment_id, app_id))
     
     return {
         "message": "Deployment triggered successfully",
