@@ -1,21 +1,21 @@
-output "eks_cluster_endpoint" {
-  description = "EKS cluster endpoint"
-  value       = aws_eks_cluster.main.endpoint
+output "alb_dns_name" {
+  description = "DNS name of the load balancer"
+  value       = aws_lb.app.dns_name
 }
 
-output "eks_cluster_name" {
-  description = "EKS cluster name"
-  value       = aws_eks_cluster.main.name
+output "alb_url" {
+  description = "URL to access the application"
+  value       = "http://${aws_lb.app.dns_name}"
 }
 
-output "eks_cluster_arn" {
-  description = "EKS cluster ARN"
-  value       = aws_eks_cluster.main.arn
+output "ecs_cluster_name" {
+  description = "ECS cluster name"
+  value       = aws_ecs_cluster.main.name
 }
 
-output "eks_cluster_certificate_authority" {
-  description = "Base64 encoded certificate data required to communicate with the cluster"
-  value       = aws_eks_cluster.main.certificate_authority[0].data
+output "ecs_service_name" {
+  description = "ECS service name"
+  value       = aws_ecs_service.app.name
 }
 
 output "rds_endpoint" {
@@ -30,12 +30,7 @@ output "rds_database_name" {
 
 output "ecr_registry_url" {
   description = "ECR registry URL"
-  value       = aws_ecr_repository.main.repository_url
-}
-
-output "ecr_registry_id" {
-  description = "ECR registry ID"
-  value       = aws_ecr_repository.main.registry_id
+  value       = aws_ecr_repository.app.repository_url
 }
 
 output "vpc_id" {
@@ -43,12 +38,13 @@ output "vpc_id" {
   value       = aws_vpc.main.id
 }
 
-output "s3_bucket_name" {
-  description = "S3 bucket name for application data"
-  value       = aws_s3_bucket.app_data.id
+output "deployment_url" {
+  description = "Complete URL to access deployed platform"
+  value       = "http://${aws_lb.app.dns_name}/ui"
 }
 
-output "kubeconfig_command" {
-  description = "Command to update kubeconfig"
-  value       = "aws eks update-kubeconfig --region ${var.aws_region} --name ${aws_eks_cluster.main.name}"
+output "api_endpoint" {
+  description = "API endpoint"
+  value       = "http://${aws_lb.app.dns_name}/api/v1"
 }
+
